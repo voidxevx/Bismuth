@@ -3,5 +3,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="Bismuth/Bismuth.vcxproj" />
+  <Project Path="Bismuth/Bismuth.vcxproj" Id="0fe25ce0-9412-4001-b13b-624a00ce7bcd" />
+  <Project Path="Example/Example.vcxproj" Id="e48fe375-10bb-48ce-bddf-385ee275fb20" />
 </Solution>

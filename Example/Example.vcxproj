@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{0fe25ce0-9412-4001-b13b-624a00ce7bcd}</ProjectGuid>
-    <RootNamespace>Bismuth</RootNamespace>
+    <ProjectGuid>{e48fe375-10bb-48ce-bddf-385ee275fb20}</ProjectGuid>
+    <RootNamespace>Example</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -40,7 +40,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
@@ -106,17 +106,15 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>BISMUTH_BUILD_DLL;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(SolutionDir)Bismuth/src;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>xcopy /y /d "$(TargetPath)" "$(SolutionDir)bin\Example\x64-Debug\"</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -134,14 +132,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\Bismuth.h" />
-    <ClInclude Include="src\Bismuth\BismuthState.h" />
-    <ClInclude Include="src\Bismuth\Core.h" />
-    <ClInclude Include="src\Bismuth\DataTypes\Token.h" />
+    <ClCompile Include="src\Example\main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Bismuth\BismuthState.cpp" />
-    <ClCompile Include="src\Bismuth\DataTypes\Token.cpp" />
+    <None Include="content\scripts\bistest.bis" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Bismuth\Bismuth.vcxproj">
+      <Project>{0fe25ce0-9412-4001-b13b-624a00ce7bcd}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
