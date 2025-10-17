@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <thread>
 
 namespace bismuth
 {
@@ -18,6 +19,17 @@ namespace bismuth
 		delete ptr;
 		ptr = nullptr;
 	}
+
+	enum ValueType
+	{
+		Int,
+		String,
+		Float,
+		Uint,
+		Analogous,
+		Custom,
+		Nil,
+	};
 
 	class IBismuthVariable
 	{
@@ -93,6 +105,56 @@ namespace bismuth
 
 
 
+	struct BISMUTH_API BismuthClassProperty
+	{
+		ValueType Type;
+		unsigned int Offset;
+
+		BismuthClassProperty()
+			: Type(ValueType::Nil)
+			, Offset(0)
+		{}
+
+		BismuthClassProperty(ValueType type, unsigned int offset)
+			: Type(type)
+			, Offset(offset)
+		{}
+	};
+
+	class BISMUTH_API BismuthClassTemplate
+	{
+		friend class BismuthClass;
+	public:
+		BismuthClassTemplate(const std::string& className, const std::vector<std::pair<std::string, ValueType>>& properties, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
+
+		const std::optional<BismuthClassProperty> getStaticProperty(const std::string& name) const;
+
+	private:
+		const std::string m_Name;
+		const unsigned int m_TotalProperties;
+		std::unordered_map<std::string, BismuthClassProperty> m_Properties;
+		std::shared_ptr<BismuthClassTemplate> m_ParentClass;
+	};
+
+	class BISMUTH_API BismuthClass
+	{
+	public:
+		BismuthClass(const std::shared_ptr<BismuthClassTemplate> _template);
+
+		template<typename _T> 
+		const std::optional<_T> getProperty(const std::string& name) const;
+
+		template<typename _T>
+		void setProperty(const std::string& name, const _T* const newValue);
+		
+	private:
+		std::shared_ptr<BismuthClassTemplate> m_ClassTemplate;
+		const void** m_Properties;
+	};
+
+
+
+
 
 
 
@@ -117,6 +179,8 @@ namespace bismuth
 
 		void DoString(const std::string& source);
 
+		inline void JoinThread() { m_OperationThread.join(); }
+
 	private:
 		void Evaluate(const std::vector<token>& tokens);
 		void EvaluateExpression(const std::vector<token>& tokens, unsigned int& i);
@@ -130,6 +194,8 @@ namespace bismuth
 		const void** m_ReturnStack;
 		bool* m_ReturnDeallocations;
 		unsigned int m_ReturnsStackTop = 0;
+
+		std::thread m_OperationThread;
 	};
 
 	template BISMUTH_API void state::PushVariable<int>(const std::string& name, int value);

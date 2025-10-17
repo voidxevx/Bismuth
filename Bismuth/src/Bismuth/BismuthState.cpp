@@ -341,7 +341,81 @@ namespace bismuth
 
 	void state::DoString(const std::string& source)
 	{
-		Evaluate(tokenize(source));
+		m_OperationThread = std::thread([this](const std::string& src){
+			Evaluate(tokenize(src));
+		}, source);
+	}
+
+
+
+
+
+
+
+	BismuthClassTemplate::BismuthClassTemplate(const std::string& className, const std::vector<std::pair<std::string, ValueType>>& properties, const std::shared_ptr<BismuthClassTemplate> parent)
+		: m_Name(className)
+		, m_ParentClass(parent)
+		, m_TotalProperties(properties.size())
+	{
+		unsigned int offset = 0;
+		for (const auto& prop : properties)
+		{
+			m_Properties[prop.first] = { prop.second, offset };
+		}
+	}
+
+	const std::optional<BismuthClassProperty> BismuthClassTemplate::getStaticProperty(const std::string& name) const
+	{
+		if (m_Properties.count(name) > 0)
+			return m_Properties.at(name);
+		else if (m_ParentClass)
+			return m_ParentClass->getStaticProperty(name).value();
+		else
+			return std::nullopt;
+	}
+
+
+
+	BismuthClass::BismuthClass(const std::shared_ptr<BismuthClassTemplate> _template)
+		: m_ClassTemplate(_template)
+	{
+		m_Properties = (const void**)malloc(_template->m_TotalProperties * sizeof(const void*));
+	}
+
+	template<typename _T>
+	const std::optional<_T> BismuthClass::getProperty(const std::string& name) const
+	{
+		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name);
+		if (prop.has_value())
+		{
+			const void* val = m_Properties[prop.value().Offset];
+			switch (prop.value().Type)
+			{
+			case ValueType::Int:
+				return static_cast<_T>(static_cast<int>(val));
+			case ValueType::String:
+				return static_cast<_T>(static_cast<std::string>(val));
+			case ValueType::Float:
+				return static_cast<_T>(static_cast<float>(val));
+			case ValueType::Uint:
+				return static_cast<_T>(static_cast<unsigned int>(val));
+			case ValueType::Analagous:
+				return static_cast<_T>(val);
+			default:
+				return std::nullopt;
+			}
+		}
+		else return std::nullopt;
+	}
+
+	template<typename _T>
+	void BismuthClass::setProperty(const std::string& name, const _T* const newValue)
+	{
+		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name);
+		if (prop.has_value())
+		{
+			m_Properties[prop.value().Offset] = newValue;
+		}
 	}
 
 }

@@ -14,6 +14,7 @@ int main()
 
 	bismuth.DoString(src);
 
+	bismuth.JoinThread();
 	std::cout << bismuth.GetVariable<int>("val1") << std::endl;
 
 	return 0;
