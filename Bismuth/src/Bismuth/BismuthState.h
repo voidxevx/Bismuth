@@ -2,11 +2,12 @@
 
 #include "Core.h"
 
-#include "DataTypes/token.h"
+#include <optional>
 #include <vector>
 #include <string>
 #include <unordered_map>
 #include <thread>
+#include <functional>
 
 namespace bismuth
 {
@@ -19,6 +20,41 @@ namespace bismuth
 		delete ptr;
 		ptr = nullptr;
 	}
+
+	enum BISMUTH_API tokenType
+	{
+		Identifier,
+		Assignment, // =
+		LineEnd, // ;
+		ExpressionStart, // (
+		ExpressionEnd, // )
+
+		StaticInt,
+		StaticFloat,
+		StaticString,
+		StaticNil,
+	};
+
+	struct BISMUTH_API token
+	{
+		tokenType Type;
+		std::optional<std::string> Value;
+
+		token(tokenType type)
+			: Type(type)
+		{
+		}
+		token(tokenType type, std::string val)
+			: Type(type)
+			, Value(val)
+		{
+		}
+	};
+
+
+
+
+
 
 	enum ValueType
 	{
@@ -34,24 +70,27 @@ namespace bismuth
 	class IBismuthVariable
 	{
 	public:
-		IBismuthVariable(const std::string& name)
+		IBismuthVariable(const std::string& name, ValueType type)
 			: m_Name(name)
+			, m_Type(type)
 		{ }
 		virtual ~IBismuthVariable() = default;
 		
 		inline const std::string& GetName() const { return m_Name; }
-		virtual inline const std::string GetStaticType() const { return "NULL"; }
+		inline const ValueType GetStaticType() const { return m_Type; }
 		virtual inline const void* const GetAnalogous() const { return nullptr; }
+
 	protected:
 		std::string m_Name;
+		ValueType m_Type;
 	};
 
 	template<typename _T>
 	class BismuthVariable : public IBismuthVariable
 	{
 	public:
-		BismuthVariable(const std::string& name, _T value)
-			: IBismuthVariable(name)
+		BismuthVariable(const std::string& name, ValueType type, _T value)
+			: IBismuthVariable(name, type)
 			, m_Value(value)
 		{}
 
@@ -72,7 +111,6 @@ namespace bismuth
 		inline const _Ty Cast_ptr() const { return *static_cast<const _Ty*>(_T(*this)); }
 
 
-		virtual inline const std::string GetStaticType() const override { return typeid(_T).name(); }
 		virtual inline const void* const GetAnalogous() const override { return &m_Value; }
 
 	private:
@@ -105,6 +143,49 @@ namespace bismuth
 
 
 
+
+	enum BismuthFunctionRelativity
+	{
+		Local,
+		Native,
+		NONE,
+	};
+
+	class BISMUTH_API IBismuthFunction
+	{
+		friend class state;
+	public:
+		IBismuthFunction(BismuthFunctionRelativity rel)
+			: m_Relativity(rel)
+		{}
+		virtual ~IBismuthFunction() = default;
+
+		virtual inline BismuthFunctionRelativity GetRelativity() const { return m_Relativity; }
+
+	private:
+		BismuthFunctionRelativity m_Relativity;
+	};
+
+	class BISMUTH_API BismuthFunction_Local : public IBismuthFunction
+	{
+		friend class state;
+	public:
+		BismuthFunction_Local(const std::vector<token> tokens)
+			: IBismuthFunction(BismuthFunctionRelativity::Local)
+			, m_Tokens(tokens)
+		{}
+		virtual ~BismuthFunction_Local() = default;
+
+	private:
+		std::vector<token> m_Tokens;
+	};
+
+	
+
+
+
+
+
 	struct BISMUTH_API BismuthClassProperty
 	{
 		ValueType Type;
@@ -123,7 +204,7 @@ namespace bismuth
 
 	class BISMUTH_API BismuthClassTemplate
 	{
-		friend class BismuthClass;
+		friend class BismuthClassInstance;
 	public:
 		BismuthClassTemplate(const std::string& className, const std::vector<std::pair<std::string, ValueType>>& properties, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
 
@@ -136,10 +217,10 @@ namespace bismuth
 		std::shared_ptr<BismuthClassTemplate> m_ParentClass;
 	};
 
-	class BISMUTH_API BismuthClass
+	class BISMUTH_API BismuthClassInstance
 	{
 	public:
-		BismuthClass(const std::shared_ptr<BismuthClassTemplate> _template);
+		BismuthClassInstance(const std::shared_ptr<BismuthClassTemplate> _template);
 
 		template<typename _T> 
 		const std::optional<_T> getProperty(const std::string& name) const;
@@ -172,38 +253,50 @@ namespace bismuth
 		void BreakToken(const std::string& str, std::vector<std::string>& tokens) const;
 
 		template<typename _T>
-		void PushVariable(const std::string& name, _T value);
+		void PushVariable(const std::string& name, ValueType type, _T value);
+		void PushFunction(const std::string& name, IBismuthFunction* function);
 
 		template<typename _T>
 		BismuthVariable<_T>& GetVariable(const std::string& name);
 
 		void DoString(const std::string& source);
+		void Evaluate(const std::vector<token>& tokens);
+		void EvaluateExpression(const std::vector<token>& tokens, unsigned int& i);
+		void RunFunction(const IBismuthFunction* const function);
 
 		inline void JoinThread() { m_OperationThread.join(); }
 
-	private:
-		void Evaluate(const std::vector<token>& tokens);
-		void EvaluateExpression(const std::vector<token>& tokens, unsigned int& i);
-		bool is_num(const std::string& str) const;
 
-		void pushToReturn(const void* const ptr, bool dealloc = false);
 		template<typename _T>
-		_T const popFromReturn();
+		_T popFromReturn();
+
+	private:
+		bool is_num_int(const std::string& str) const;
+		bool is_num_float(const std::string& str) const;
+
+		void pushToReturn(const void* const ptr, ValueType type, bool dealloc = false);
 
 		std::unordered_map<std::string, IBismuthVariable*> m_Variables;
-		const void** m_ReturnStack;
+		std::unordered_map<std::string, IBismuthFunction*> m_GlobalFunctions;
+
+		struct ReturnValue
+		{
+			const void* Value;
+			ValueType Type;
+		};
+		ReturnValue* m_ReturnStack;
 		bool* m_ReturnDeallocations;
 		unsigned int m_ReturnsStackTop = 0;
 
 		std::thread m_OperationThread;
 	};
 
-	template BISMUTH_API void state::PushVariable<int>(const std::string& name, int value);
-	template BISMUTH_API void state::PushVariable<unsigned int>(const std::string& name, unsigned int value);
-	template BISMUTH_API void state::PushVariable<float>(const std::string& name, float value);
-	template BISMUTH_API void state::PushVariable<std::string>(const std::string& name, std::string value);
-	template BISMUTH_API void state::PushVariable<const char*>(const std::string& name, const char* value);
-	template BISMUTH_API void state::PushVariable<const void*>(const std::string& name, const void* value);
+	template BISMUTH_API void state::PushVariable<int>(const std::string& name, ValueType type, int value);
+	template BISMUTH_API void state::PushVariable<unsigned int>(const std::string& name, ValueType type, unsigned int value);
+	template BISMUTH_API void state::PushVariable<float>(const std::string& name, ValueType type, float value);
+	template BISMUTH_API void state::PushVariable<std::string>(const std::string& name, ValueType type, std::string value);
+	template BISMUTH_API void state::PushVariable<const char*>(const std::string& name, ValueType type, const char* value);
+	template BISMUTH_API void state::PushVariable<const void*>(const std::string& name, ValueType type, const void* value);
 
 	template BISMUTH_API bis_int& state::GetVariable<int>(const std::string& name);
 	template BISMUTH_API bis_uint& state::GetVariable<unsigned int>(const std::string& name);
@@ -211,5 +304,22 @@ namespace bismuth
 	template BISMUTH_API bis_string& state::GetVariable<std::string>(const std::string& name);
 	template BISMUTH_API bis_cstr& state::GetVariable<const char*>(const std::string& name);
 	template BISMUTH_API bis_voidptr& state::GetVariable<const void*>(const std::string& name);
+
+
+
+	class BISMUTH_API BismuthFunction_Native : public IBismuthFunction
+	{
+		friend class state;
+		using bis_lambda = std::function<void(state* const)>;
+	public:
+		BismuthFunction_Native(bis_lambda func)
+			: IBismuthFunction(BismuthFunctionRelativity::Native)
+			, m_NativeFunction(func)
+		{}
+
+	private:
+		bis_lambda m_NativeFunction;
+	};
+
 
 }

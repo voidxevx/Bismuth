@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -137,11 +137,9 @@
     <ClInclude Include="src\Bismuth.h" />
     <ClInclude Include="src\Bismuth\BismuthState.h" />
     <ClInclude Include="src\Bismuth\Core.h" />
-    <ClInclude Include="src\Bismuth\DataTypes\Token.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Bismuth\BismuthState.cpp" />
-    <ClCompile Include="src\Bismuth\DataTypes\Token.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

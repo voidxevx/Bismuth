@@ -24,15 +24,9 @@
     <ClInclude Include="src\Bismuth\BismuthState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Bismuth\DataTypes\Token.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Bismuth\BismuthState.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Bismuth\DataTypes\Token.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -5,17 +5,22 @@ int main()
 {
 	bismuth::state bismuth = bismuth::state();
 
+	bismuth.PushFunction("print", new bismuth::BismuthFunction_Native([](bismuth::state* _state) {
+		const std::string val = _state->popFromReturn<std::string>();
+		std::cout << val;
+	}));
+	bismuth.PushFunction("println", new bismuth::BismuthFunction_Native([](bismuth::state* _state) {
+		const std::string val = _state->popFromReturn<std::string>();
+		std::cout << val << "\n";
+	}));
+
 	const std::string src = R"(
-		int val1 = 300;
-		int val2 = 20;
-		val1 = val2;
+		println("Hello,%world");
 	)";
 
 
 	bismuth.DoString(src);
-
 	bismuth.JoinThread();
-	std::cout << bismuth.GetVariable<int>("val1") << std::endl;
 
 	return 0;
 }

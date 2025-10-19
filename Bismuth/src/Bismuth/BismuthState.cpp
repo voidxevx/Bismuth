@@ -13,7 +13,7 @@ namespace bismuth
 
 	state::state()
 	{
-		m_ReturnStack = (const void**)malloc(STACK_MAX_SIZE * sizeof(const void*));
+		m_ReturnStack = (ReturnValue*)malloc(STACK_MAX_SIZE * sizeof(ReturnValue));
 		m_ReturnDeallocations = (bool*)malloc(STACK_MAX_SIZE * sizeof(bool));
 	}
 
@@ -25,9 +25,9 @@ namespace bismuth
 
 
 	template<typename _T>
-	void state::PushVariable(const std::string& name, _T val)
+	void state::PushVariable(const std::string& name, ValueType type, _T val)
 	{
-		m_Variables[name] = new BismuthVariable<_T>(name, val);
+		m_Variables[name] = new BismuthVariable<_T>(name, type, val);
 	}
 
 	template<typename _T>
@@ -36,6 +36,10 @@ namespace bismuth
 		return *dynamic_cast<BismuthVariable<_T>*>(m_Variables[name]);
 	}
 	
+	void state::PushFunction(const std::string& name, IBismuthFunction* function)
+	{
+		m_GlobalFunctions[name] = function;
+	}
 
 
 
@@ -61,7 +65,13 @@ namespace bismuth
 					tokens.push_back(token(tokenType::ExpressionStart));
 				else if (c_InternTokens[i] == ")")
 					tokens.push_back(token(tokenType::ExpressionEnd));
-				else if (is_num(c_InternTokens[i]))
+				else if (c_InternTokens[i] == "nil")
+					tokens.push_back(token(tokenType::StaticNil));
+				else if (c_InternTokens[i][0] == '"')
+					tokens.push_back(token(tokenType::StaticString, c_InternTokens[i]));
+				else if (is_num_float(c_InternTokens[i]))
+					tokens.push_back(token(tokenType::StaticFloat, c_InternTokens[i]));
+				else if (is_num_int(c_InternTokens[i]))
 					tokens.push_back(token(tokenType::StaticInt, c_InternTokens[i]));
 				else
 					tokens.push_back(token(tokenType::Identifier, c_InternTokens[i]));
@@ -79,7 +89,29 @@ namespace bismuth
 		{
 			if (!std::isspace(str[i]))
 			{
-				if (!std::isalnum(str[i]))
+				if (str[i] == '"')
+				{
+					if (buffer.str() != "")
+						tokens.push_back(buffer.str());
+					buffer.str("");
+
+					buffer << str[i];
+					++i;
+					while (str[i] != '"' && i < str.length())
+					{
+						if (str[i] == '%')
+							buffer << ' ';
+						else
+							buffer << str[i];
+						++i;
+					}
+					buffer << str[i];
+
+					if (buffer.str() != "")
+						tokens.push_back(buffer.str());
+					buffer.str("");
+				}
+				else if (!std::isalnum(str[i]) && str[i] != '.')
 				{
 					if (buffer.str() != "")
 						tokens.push_back(buffer.str());
@@ -97,9 +129,9 @@ namespace bismuth
 
 
 
+	
 
-
-	bool state::is_num(const std::string& str) const
+	bool state::is_num_int(const std::string& str) const
 	{
 		try
 		{
@@ -116,28 +148,190 @@ namespace bismuth
 
 		return true;
 	}
+	bool state::is_num_float(const std::string& str) const
+	{
+		try
+		{
+			float num = std::stof(str);
+		}
+		catch (const std::invalid_argument)
+		{
+			return false;
+		}
+		catch (const std::out_of_range)
+		{
+			return false;
+		}
+
+		return true;
+	}
 
 
-	void state::pushToReturn(const void* const val, bool dealloc)
+	void state::pushToReturn(const void* const val, ValueType type, bool dealloc)
 	{
 		if (m_ReturnsStackTop < STACK_MAX_SIZE)
 		{
-			m_ReturnStack[m_ReturnsStackTop] = val;
+			m_ReturnStack[m_ReturnsStackTop] = { val, type };
 			m_ReturnDeallocations[m_ReturnsStackTop] = dealloc;
 			++m_ReturnsStackTop;
 		}
 	}
 
+
+
+
+	/* Pop values from return */
+	#define POPRETURN_INITIALIZE ReturnValue top = m_ReturnStack[m_ReturnsStackTop - 1];\
+								 const void* const val = top.Value;
+	#define POPRETURN_CLEANUP if (m_ReturnDeallocations[m_ReturnsStackTop - 1])\
+									  delete val;\
+							  --m_ReturnsStackTop;
+
 	template<typename _T>
-	_T const state::popFromReturn()
+	_T state::popFromReturn()
 	{
-		const void* const val = m_ReturnStack[m_ReturnsStackTop - 1];
+		POPRETURN_INITIALIZE
+
 		_T copy_val = *static_cast<const _T*>(val);
-		if (m_ReturnDeallocations[m_ReturnsStackTop - 1])
-			delete val;
-		--m_ReturnsStackTop;
+
+		POPRETURN_CLEANUP
+		return static_cast<_T>(copy_val);
+	}
+
+	template<>
+	int state::popFromReturn()
+	{
+		POPRETURN_INITIALIZE
+
+		int copy_val = NAN;
+		switch (top.Type)
+		{
+		case ValueType::Uint:
+		case ValueType::Int:
+			copy_val = *static_cast<const int*>(val);
+			break;
+		case ValueType::Float:
+			copy_val = (int)floor(*static_cast<const float*>(val));
+			break;
+		case ValueType::String:
+		{
+			const std::string copy_val_str = *static_cast<const std::string*>(val);
+			if (is_num_int(copy_val_str))
+				copy_val = std::stoi(copy_val_str);
+			break;
+		}
+		default:
+			break;
+		}
+
+		POPRETURN_CLEANUP
 		return copy_val;
 	}
+
+	template<>
+	unsigned int state::popFromReturn()
+	{
+		POPRETURN_INITIALIZE
+
+		unsigned int copy_val = NAN;
+		switch (top.Type)
+		{
+		case ValueType::Uint:
+		case ValueType::Int:
+			copy_val = *static_cast<const unsigned int*>(val);
+			break;
+		case ValueType::Float:
+			copy_val = (unsigned int)floor(*static_cast<const float*>(val));
+			break;
+		case ValueType::String:
+		{
+			const std::string copy_val_str = *static_cast<const std::string*>(val);
+			if (is_num_int(copy_val_str))
+				copy_val = (unsigned int)std::stoi(copy_val_str);
+			break;
+		}
+		default:
+			break;
+		}
+
+		POPRETURN_CLEANUP
+		return copy_val;
+	}
+
+	template<> BISMUTH_API
+	std::string state::popFromReturn()
+	{
+		POPRETURN_INITIALIZE
+
+		std::string copy_val = "";
+		switch (top.Type)
+		{
+		case ValueType::String:
+			copy_val = *static_cast<const std::string*>(val);
+			break;
+		case ValueType::Uint:
+		case ValueType::Int:
+			copy_val = std::to_string(*static_cast<const int*>(val));
+			break;
+		case ValueType::Float:
+			copy_val = std::to_string(*static_cast<const float*>(val));
+			break;
+		case ValueType::Nil:
+			copy_val = "NIL";
+			break;
+		case ValueType::Custom:
+			// TODO: Class to string methods
+			break; 
+		default:
+			break;
+		}
+
+		POPRETURN_CLEANUP
+		return copy_val;
+	}
+
+	template<>
+	float state::popFromReturn()
+	{
+		POPRETURN_INITIALIZE
+
+		float copy_val = NAN;
+		switch (top.Type)
+		{
+		case ValueType::Float:
+			copy_val = *static_cast<const float*>(val);
+			break;
+		case ValueType::Int:
+		case ValueType::Uint:
+			copy_val = (float)*(static_cast<const int*>(val));
+			break;
+		case ValueType::String:
+		{
+			const std::string copy_val_str = *static_cast<const std::string*>(val);
+			if (is_num_float(copy_val_str))
+				copy_val = std::stof(copy_val_str);
+			break;
+		}
+		default:
+			break;
+		}
+
+		POPRETURN_CLEANUP
+		return copy_val;
+	}
+
+	template<>
+	const void* state::popFromReturn()
+	{
+		POPRETURN_INITIALIZE
+
+		--m_ReturnsStackTop;
+		return val;
+	}
+	
+
+
+	
 
 	void state::EvaluateExpression(const std::vector<token>& tokens, unsigned int& i)
 	{
@@ -151,7 +345,19 @@ namespace bismuth
 			*/
 			if (c_token.Type == tokenType::StaticInt)
 			{
-				pushToReturn(new int(std::stoi(c_token.Value.value())), true);
+				pushToReturn(new int(std::stoi(c_token.Value.value())), ValueType::Int, true);
+			}
+			else if (c_token.Type == tokenType::StaticFloat)
+			{
+				pushToReturn(new float(std::stof(c_token.Value.value())), ValueType::Float, true);
+			}
+			else if (c_token.Type == tokenType::StaticString)
+			{
+				pushToReturn(new std::string(c_token.Value.value()), ValueType::String);
+			}
+			else if (c_token.Type == tokenType::StaticNil)
+			{
+				pushToReturn(nullptr, ValueType::Nil);
 			}
 			else if (c_token.Type == tokenType::Identifier)
 			{
@@ -164,32 +370,32 @@ namespace bismuth
 				else if (m_Variables.count(identifierName) > 0)// push variable value to stack	
 				{
 					IBismuthVariable* var = m_Variables[identifierName];
-					const std::string staticType = m_Variables[identifierName]->GetStaticType();
+					const ValueType staticType = m_Variables[identifierName]->GetStaticType();
 
-					if (staticType == "int")
+					if (staticType == ValueType::Int)
 					{
 						bis_int* var_int = dynamic_cast<bis_int*>(var);
-						pushToReturn(&var_int->Get());
+						pushToReturn(&var_int->Get(), staticType);
 					}
-					else if (staticType == "str")
+					else if (staticType == ValueType::String)
 					{
 						bis_string* var_str = dynamic_cast<bis_string*>(var);
-						pushToReturn(&var_str->Get());
+						pushToReturn(&var_str->Get(), staticType);
 					}
-					else if (staticType == "float")
+					else if (staticType == ValueType::Float)
 					{
 						bis_float* var_float = dynamic_cast<bis_float*>(var);
-						pushToReturn(&var_float->Get());
+						pushToReturn(&var_float->Get(), staticType);
 					}
-					else if (staticType == "uint")
+					else if (staticType == ValueType::Uint)
 					{
 						bis_uint* var_uint = dynamic_cast<bis_uint*>(var);
-						pushToReturn(&var_uint->Get());
+						pushToReturn(&var_uint->Get(), staticType);
 					}
-					else if (staticType == "voidptr")
+					else if (staticType == ValueType::Analogous)
 					{
 						bis_voidptr* var_voidptr = dynamic_cast<bis_voidptr*>(var);
-						pushToReturn(&var_voidptr->Get());
+						pushToReturn(&var_voidptr->Get(), staticType);
 					}
 				}
 			}
@@ -220,15 +426,15 @@ namespace bismuth
 					IBismuthVariable* var{};
 
 					if (varType == "int")
-						var = new bis_int(c_token.Value.value(), 0);
+						var = new bis_int(c_token.Value.value(), ValueType::Int, 0);
 					else if (varType == "str")
-						var = new bis_string(c_token.Value.value(), "");
+						var = new bis_string(c_token.Value.value(), ValueType::String, "");
 					else if (varType == "float")
-						var = new bis_float(c_token.Value.value(), 0.0f);
+						var = new bis_float(c_token.Value.value(), ValueType::Float, 0.0f);
 					else if (varType == "uint")
-						var = new bis_uint(c_token.Value.value(), 0U);
-					else if (varType == "voidptr")
-						var = new bis_voidptr(c_token.Value.value(), nullptr);
+						var = new bis_uint(c_token.Value.value(), ValueType::Uint, 0U);
+					else if (varType == "any")
+						var = new bis_voidptr(c_token.Value.value(), ValueType::Analogous, nullptr);
 
 					/* Variable Instantiation -
 					*	followed by assignment: instantiate with value
@@ -243,7 +449,7 @@ namespace bismuth
 							bis_int* var_int = dynamic_cast<bis_int*>(var);
 							var_int->Set(popFromReturn<int>());
 						} 
-						else if (varType == "string")
+						else if (varType == "str")
 						{
 							bis_string* var_str = dynamic_cast<bis_string*>(var);
 							var_str->Set(popFromReturn<std::string>());
@@ -258,7 +464,7 @@ namespace bismuth
 							bis_uint* var_uint = dynamic_cast<bis_uint*>(var);
 							var_uint->Set(popFromReturn<unsigned int>());
 						}
-						else if (varType == "voidptr")
+						else if (varType == "any")
 						{
 							bis_voidptr* var_voidptr = dynamic_cast<bis_voidptr*>(var);
 							var_voidptr->Set(popFromReturn<const void*>());
@@ -287,30 +493,30 @@ namespace bismuth
 
 					if (var)
 					{
-						const std::string varType = var->GetStaticType();
+						const ValueType varType = var->GetStaticType();
 
 						EvaluateExpression(tokens, i);
-						if (varType == "int")
+						if (varType == ValueType::Int)
 						{
 							bis_int* var_int = dynamic_cast<bis_int*>(var);
 							var_int->Set(popFromReturn<int>());
 						}
-						else if (varType == "str")
+						else if (varType == ValueType::String)
 						{
 							bis_string* var_string = dynamic_cast<bis_string*>(var);
 							var_string->Set(popFromReturn<std::string>());
 						}
-						else if (varType == "float")
+						else if (varType == ValueType::Float)
 						{
 							bis_float* var_float = dynamic_cast<bis_float*>(var);
 							var_float->Set(popFromReturn<float>());
 						}
-						else if (varType == "uint")
+						else if (varType == ValueType::Uint)
 						{
 							bis_uint* var_uint = dynamic_cast<bis_uint*>(var);
 							var_uint->Set(popFromReturn<unsigned int>());
 						}
-						else if (varType == "voidptr")
+						else if (varType == ValueType::Analogous)
 						{
 							bis_voidptr* var_voidptr = dynamic_cast<bis_voidptr*>(var);
 							var_voidptr->Set(popFromReturn<const void*>());
@@ -322,14 +528,20 @@ namespace bismuth
 				{
 					const std::string identifierName = c_token.Value.value();
 
-					EvaluateExpression(tokens, i);
-
-					if (identifierName == "print_str")
+					if (m_GlobalFunctions.count(identifierName) > 0)
 					{
-						const std::string val = popFromReturn<std::string>();
-						std::cout << val << "\n";
+						EvaluateExpression(tokens, i);
+
+						RunFunction(m_GlobalFunctions[identifierName]);
 					}
-					else; // TODO: custom functions
+
+					//if (identifierName == "print")
+					//{
+					//	const std::string val = popFromReturn<std::string>();
+					//	std::cout << val << "\n";
+					//}
+					//else; // TODO: custom functions
+
 				}
 
 			}
@@ -346,6 +558,27 @@ namespace bismuth
 		}, source);
 	}
 
+	void state::RunFunction(const IBismuthFunction* const function)
+	{
+		switch (function->GetRelativity())
+		{
+		case BismuthFunctionRelativity::Local:
+		{
+			const BismuthFunction_Local* const func_local = dynamic_cast<const BismuthFunction_Local* const>(function);
+			Evaluate(func_local->m_Tokens);
+			break;
+		}
+		case BismuthFunctionRelativity::Native:
+		{
+			const BismuthFunction_Native* const func_native = dynamic_cast<const BismuthFunction_Native* const>(function);
+			func_native->m_NativeFunction(this);
+			break;
+		}
+		case BismuthFunctionRelativity::NONE:
+			static_assert(true);
+			break;
+		}
+	}
 
 
 
@@ -376,14 +609,14 @@ namespace bismuth
 
 
 
-	BismuthClass::BismuthClass(const std::shared_ptr<BismuthClassTemplate> _template)
+	BismuthClassInstance::BismuthClassInstance(const std::shared_ptr<BismuthClassTemplate> _template)
 		: m_ClassTemplate(_template)
 	{
 		m_Properties = (const void**)malloc(_template->m_TotalProperties * sizeof(const void*));
 	}
 
 	template<typename _T>
-	const std::optional<_T> BismuthClass::getProperty(const std::string& name) const
+	const std::optional<_T> BismuthClassInstance::getProperty(const std::string& name) const
 	{
 		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name);
 		if (prop.has_value())
@@ -409,7 +642,7 @@ namespace bismuth
 	}
 
 	template<typename _T>
-	void BismuthClass::setProperty(const std::string& name, const _T* const newValue)
+	void BismuthClassInstance::setProperty(const std::string& name, const _T* const newValue)
 	{
 		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name);
 		if (prop.has_value())
