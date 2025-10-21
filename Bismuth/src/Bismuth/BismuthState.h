@@ -38,6 +38,11 @@ namespace bismuth
 		StaticNil,
 
 		Return, // return
+		ClassDecl, // class
+		Inherite, // extends
+		PublicDomain, // public
+		ProtectedDomain, // protected
+		PrivateDomain, // private
 	};
 
 	struct BISMUTH_API token
@@ -208,21 +213,48 @@ namespace bismuth
 
 
 
-
+	enum BismuthClassDomain
+	{
+		Public,
+		Protected,
+		Private,
+	};
 
 	struct BISMUTH_API BismuthClassProperty
 	{
 		ValueType Type;
 		unsigned int Offset;
+		BismuthClassDomain Domain;
 
 		BismuthClassProperty()
 			: Type(ValueType::Nil)
 			, Offset(0)
+			, Domain(BismuthClassDomain::Public)
 		{}
 
-		BismuthClassProperty(ValueType type, unsigned int offset)
+		BismuthClassProperty(ValueType type, unsigned int offset, BismuthClassDomain domain)
 			: Type(type)
 			, Offset(offset)
+			, Domain(domain)
+		{}
+	};
+
+	struct PropertyTemplate
+	{
+		ValueType type;
+		BismuthClassDomain domain;
+		std::string Name;
+
+		PropertyTemplate()
+			: type(ValueType::Nil)
+			, domain(BismuthClassDomain::Public)
+			, Name("")
+		{}
+
+		PropertyTemplate(ValueType _type, BismuthClassDomain _domain, const std::string& name)
+			: type(_type)
+			, domain(_domain)
+			, Name(name)
 		{}
 	};
 
@@ -230,11 +262,11 @@ namespace bismuth
 	{
 		friend class BismuthClassInstance;
 	public:
-		BismuthClassTemplate(const std::vector<std::pair<std::string, ValueType>>& properties, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
+		BismuthClassTemplate(const std::vector<PropertyTemplate>& properties, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
 
-		const std::optional<BismuthClassProperty> getStaticProperty(const std::string& name) const;
+		const std::optional<BismuthClassProperty> getStaticProperty(const std::string& name, bool local) const;
 
-		static std::shared_ptr<BismuthClassTemplate> CreateClassTemplate(const std::vector<std::pair<std::string, ValueType>>& properties, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
+		static std::shared_ptr<BismuthClassTemplate> CreateClassTemplate(const std::vector<PropertyTemplate>& properties, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
 
 	private:
 		const unsigned int m_TotalProperties;
@@ -422,8 +454,8 @@ namespace bismuth
 		std::vector<BismuthFunctionInput> GetInputs(const std::vector<token>& tokens, unsigned int& i) const;
 
 
-		//std::unordered_map<std::string, IBismuthVariable*> m_Variables;
 		std::map<std::string, IBismuthFunction*> m_GlobalFunctions;
+		std::map<std::string, std::shared_ptr<BismuthClassTemplate>> m_ClassTypes;
 
 		VariableScope** m_ScopeStack;
 		unsigned int m_ScopeStackTop = 0;

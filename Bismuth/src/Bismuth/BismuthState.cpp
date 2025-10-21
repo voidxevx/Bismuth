@@ -119,6 +119,16 @@ namespace bismuth
 					tokens.push_back(token(tokenType::StaticNil));
 				else if (c_InternTokens[i] == "return")
 					tokens.push_back(token(tokenType::Return));
+				else if (c_InternTokens[i] == "class")
+					tokens.push_back(token(tokenType::ClassDecl));
+				else if (c_InternTokens[i] == "extends")
+					tokens.push_back(token(tokenType::Inherite));
+				else if (c_InternTokens[i] == "public")
+					tokens.push_back(token(tokenType::PublicDomain));
+				else if (c_InternTokens[i] == "protected")
+					tokens.push_back(token(tokenType::ProtectedDomain));
+				else if (c_InternTokens[i] == "private")
+					tokens.push_back(token(tokenType::PrivateDomain));
 				else if (c_InternTokens[i][0] == '"')
 					tokens.push_back(token(tokenType::StaticString, c_InternTokens[i]));
 				else if (is_num_int(c_InternTokens[i]))
@@ -477,25 +487,11 @@ namespace bismuth
 			*/
 			if (c_token.Type == tokenType::Identifier)
 			{
-				const std::string functionReturnType = c_token.Value.value();
+				const std::string type_str = c_token.Value.value();
 
-				ValueType returnType;
-				if (functionReturnType == "int")
-					returnType = ValueType::Int;
-				else if (functionReturnType == "str")
-					returnType = ValueType::String;
-				else if (functionReturnType == "float")
-					returnType = ValueType::Float;
-				else if (functionReturnType == "uint")
-					returnType = ValueType::Uint;
-				else if (functionReturnType == "any")
-					returnType = ValueType::Analogous;
-				else if (functionReturnType == "void")
-					returnType = ValueType::Nil;
-				else
-					returnType = ValueType::Custom;
+				ValueType returnType = (type_str == "int" ? ValueType::Int : type_str == "str" ? ValueType::String : type_str == "float" ? ValueType::Float : type_str == "uint" ? ValueType::Uint : type_str == "any" ? ValueType::Analogous : ValueType::Custom);
+
 					
-
 				++i; // off of return identifier
 				c_token = tokens[i];
 				if (c_token.Type == tokenType::Identifier)
@@ -525,8 +521,96 @@ namespace bismuth
 							++i;
 						}
 
-						BismuthFunction_Local* func = new BismuthFunction_Local(returnType, inputs, func_tokens, (returnType == ValueType::Custom ? (std::optional<std::string>)functionReturnType : std::nullopt));
+						BismuthFunction_Local* func = new BismuthFunction_Local(returnType, inputs, func_tokens, (returnType == ValueType::Custom ? (std::optional<std::string>)type_str : std::nullopt));
 						m_GlobalFunctions[functionName] = func;
+					}
+				}
+			}
+
+			/*
+			* Class Declaration: "
+			*/
+			else if (c_token.Type == tokenType::ClassDecl)
+			{
+				if (tokens[i + 1].Type == tokenType::Identifier)
+				{
+					++i; // to identifier
+					c_token = tokens[i];
+					const std::string className = c_token.Value.value();
+
+					std::shared_ptr<BismuthClassTemplate> parent = nullptr;
+					if (tokens[i + 1].Type == tokenType::Inherite)
+					{
+						i += 2; // to inherited class ident
+						c_token = tokens[i];
+						if (c_token.Type == tokenType::Identifier)
+						{
+							const std::string inheritedIdentifier = c_token.Value.value();
+
+							if (m_ClassTypes.count(inheritedIdentifier) > 0)
+							{
+								parent = m_ClassTypes[inheritedIdentifier];
+							}
+
+						}
+					}
+
+
+					if (tokens[i + 1].Type == tokenType::ScopeStart)
+					{
+						++i;
+						c_token = tokens[i];
+
+						std::vector<PropertyTemplate> properties;
+
+						while (tokens[i].Type != tokenType::ScopeEnd)
+						{
+							++i;
+							c_token = tokens[i];
+
+							if (c_token.Type == tokenType::PublicDomain || c_token.Type == tokenType::ProtectedDomain || c_token.Type == tokenType::PrivateDomain)
+							{
+								BismuthClassDomain domain = (c_token.Type == tokenType::PublicDomain ? BismuthClassDomain::Public : c_token.Type == tokenType::ProtectedDomain ? BismuthClassDomain::Protected : BismuthClassDomain::Private);
+
+								++i;
+								c_token = tokens[i];
+								/*
+								* Function return type or variable type
+								*/
+								if (c_token.Type == tokenType::Identifier)
+								{
+
+									const std::string& type_str = c_token.Value.value();
+									ValueType valType = (type_str == "int" ? ValueType::Int : type_str == "str" ? ValueType::String : type_str == "float" ? ValueType::Float : type_str == "uint" ? ValueType::Uint : type_str == "any" ? ValueType::Analogous : ValueType::Custom);
+
+									++i;
+									c_token = tokens[i];
+									if (c_token.Type == tokenType::Identifier)
+									{
+										const std::string propertyName = c_token.Value.value();
+
+										++i;
+										c_token = tokens[i];
+
+										/*
+										* Followed by expression: Function
+										* Else: Variable
+										*/
+										if (c_token.Type == tokenType::ExpressionStart)
+										{
+											// TODO: Class methods
+										}
+										else
+										{
+											properties.push_back({valType, domain, propertyName});
+										}
+									}
+								}
+							}
+						}
+
+						m_ClassTypes[className] = std::make_shared<BismuthClassTemplate>(properties, parent);
+						++i;
 					}
 				}
 			}
@@ -653,7 +737,6 @@ namespace bismuth
 						}
 
 
-						// TODO: Expression evaluation + return stack
 
 					} // else instantiate null
 
@@ -795,28 +878,28 @@ namespace bismuth
 
 
 
-	BismuthClassTemplate::BismuthClassTemplate(const std::vector<std::pair<std::string, ValueType>>& properties, const std::shared_ptr<BismuthClassTemplate> parent)
+	BismuthClassTemplate::BismuthClassTemplate(const std::vector<PropertyTemplate>& properties, const std::shared_ptr<BismuthClassTemplate> parent)
 		: m_ParentClass(parent)
 		, m_TotalProperties(properties.size())
 	{
 		unsigned int offset = 0;
 		for (const auto& prop : properties)
 		{
-			m_Properties[prop.first] = { prop.second, offset };
+			m_Properties[prop.Name] = { prop.type, offset, prop.domain };
 		}
 	}
 
-	const std::optional<BismuthClassProperty> BismuthClassTemplate::getStaticProperty(const std::string& name) const
+	const std::optional<BismuthClassProperty> BismuthClassTemplate::getStaticProperty(const std::string& name, bool local) const
 	{
-		if (m_Properties.count(name) > 0)
+		if (m_Properties.count(name) > 0 && (m_Properties.at(name).Domain == BismuthClassDomain::Public || m_Properties.at(name).Domain == BismuthClassDomain::Protected || local))
 			return m_Properties.at(name);
 		else if (m_ParentClass)
-			return m_ParentClass->getStaticProperty(name).value();
+			return m_ParentClass->getStaticProperty(name, false).value();
 		else
 			return std::nullopt;
 	}
 
-	std::shared_ptr<BismuthClassTemplate> BismuthClassTemplate::CreateClassTemplate(const std::vector<std::pair<std::string, ValueType>>& properties, const std::shared_ptr<BismuthClassTemplate> parent)
+	std::shared_ptr<BismuthClassTemplate> BismuthClassTemplate::CreateClassTemplate(const std::vector<PropertyTemplate>& properties, const std::shared_ptr<BismuthClassTemplate> parent)
 	{
 		return std::make_shared<BismuthClassTemplate>(properties, parent);
 	}
@@ -842,15 +925,9 @@ namespace bismuth
 		else return std::nullopt;
 	}
 
-	#define CLASSINSTANCE_GETPROP_INITIALIZE std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name);\
+	#define CLASSINSTANCE_GETPROP_INITIALIZE std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name, true);\
 											if (prop.has_value())
 	#define CLASSINSTANCE_GETPROP_CLEANUP else return std::nullopt;
-
-	/*template<typename _T>
-	const std::optional<_T> BismuthClassInstance::getProperty(const std::string& name) const
-	{
-		return std::nullopt;
-	}*/
 
 	template<> BISMUTH_API
 	const std::optional<int> BismuthClassInstance::getProperty(const std::string& name) const
@@ -1011,7 +1088,7 @@ namespace bismuth
 	template<typename _T>
 	void BismuthClassInstance::setProperty(const std::string& name, _T newValue)
 	{
-		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name);
+		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name, true);
 		if (prop.has_value())
 		{
 			m_Properties[prop.value().Offset] = &newValue;

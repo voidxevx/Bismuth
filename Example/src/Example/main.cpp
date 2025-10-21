@@ -20,19 +20,20 @@ int main()
 	}));
 
 	const std::string src = R"(
-		void foo(int A, int B)
+		class Test
 		{
-			int res = +(A, B);
-			println(res);
-		}
+			public int pubVal;
+			protected int proVal;
+			private int priVal;
+		}	
 	)";
 	bismuth.Build(bismuth.tokenize(src));
 
 
-	bismuth.DoString("foo(100, 300);");
-	bismuth.JoinThread();
+	//bismuth.DoString("foo(100, 300);");
+	//bismuth.JoinThread();
 
-	struct testHandle
+	/*struct testHandle
 	{
 		int myVal;
 
@@ -49,7 +50,7 @@ int main()
 	bismuth::bis_class testClass_handle = bismuth::bis_class(bismuth::ValueType::Custom, new bismuth::BismuthClassInstace_UserHandle{ { {"myVal", bismuth::BismuthUserHandle{bismuth::ValueType::Int, &testH->myVal }} } });
 
 	bismuth::IBismuthClassInstance::SetInstanceProperty<int>(testClass_inst, "myVal", 30);
-	bismuth::IBismuthClassInstance::SetInstanceProperty<int>(testClass_handle, "myVal", 30);
+	bismuth::IBismuthClassInstance::SetInstanceProperty<int>(testClass_handle, "myVal", 30);*/
 
 	return 0;
 }
