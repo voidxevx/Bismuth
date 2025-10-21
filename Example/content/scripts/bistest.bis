@@ -1,2 +1,4 @@
-int test = 12;
-print(test);
+void foo(int A, int B)
+{
+    println(+(A, B));
+}
