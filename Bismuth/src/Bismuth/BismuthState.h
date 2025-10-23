@@ -313,7 +313,7 @@ namespace bismuth
 		template<typename _T>
 		static void SetInstanceProperty(IBismuthClassInstance* const instance, const std::string& name, _T newValue);
 
-		virtual void* const GetPropertyPtr(const std::string&) const { return nullptr; }
+		virtual void* const GetPropertyPtr(const std::string&, bool) const { return nullptr; }
 
 	protected:
 		IBismuthClassInstance(BismuthClassInstanceRelativity relativity)
@@ -349,11 +349,11 @@ namespace bismuth
 		template<typename _T>
 		void setProperty(const std::string& name, _T newValue);
 
-		virtual void* const GetPropertyPtr(const std::string&) const override;
+		virtual void* const GetPropertyPtr(const std::string&, bool) const override;
 		
 	private:
 		std::shared_ptr<BismuthClassTemplate> m_ClassTemplate;
-		const void** m_Properties;
+		void** m_Properties;
 	};
 
 	
@@ -385,7 +385,7 @@ namespace bismuth
 		template<typename _T>
 		void setProperty(const std::string& name, _T newValue);
 
-		virtual void* const GetPropertyPtr(const std::string&) const override;
+		virtual void* const GetPropertyPtr(const std::string&, bool) const override;
 
 	private:
 		std::map<std::string, BismuthUserHandle> m_Properties;
@@ -486,6 +486,7 @@ namespace bismuth
 			Function,
 			Variable,
 			Class,
+			Property,
 			NONE,
 		};
 		struct TraceObject
@@ -504,7 +505,7 @@ namespace bismuth
 			{}
 		};
 
-		TraceObject TraceForObjects(const std::vector<token>& tokens, unsigned int& i, const state::TraceObject& last);
+		TraceObject TraceForObjects(const std::vector<token>& tokens, unsigned int& i, const state::TraceObject& last = {});
 
 	private:
 		void BreakToken(const std::string& str, std::vector<std::string>& tokens) const;
@@ -545,6 +546,7 @@ namespace bismuth
 	template BISMUTH_API std::optional<bis_bool*> state::GetVariable<bool>(const std::string&);
 	template BISMUTH_API std::optional<bis_string*> state::GetVariable<std::string>(const std::string&);
 	template BISMUTH_API std::optional<bis_voidptr*> state::GetVariable<const void*>(const std::string&);
+	template BISMUTH_API std::optional<bis_class*> state::GetVariable<IBismuthClassInstance*>(const std::string&);
 
 
 

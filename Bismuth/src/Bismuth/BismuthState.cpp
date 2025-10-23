@@ -701,7 +701,7 @@ namespace bismuth
 						EvaluateExpression(tokens, i);
 						BismuthClassInstance* inst = new BismuthClassInstance(m_ClassTypes[identifierName]);
 						// TODO: run constructor function
-						pushToReturn(inst, ValueType::Custom);
+						pushToReturn(std::move(inst), ValueType::Custom);
 					}
 				}
 				else // push variable value to stack
@@ -878,8 +878,9 @@ namespace bismuth
 	{
 		void* current = last.ptr;
 		TraceType c_type = last.Type;
+		bool isThis = false;
 
-		while (tokens[i].Type == tokenType::Property)
+		while (i < tokens.size() && tokens[i].Type == tokenType::Property)
 		{
 			++i; // to identifier
 			token c_token = tokens[i];
@@ -893,11 +894,17 @@ namespace bismuth
 
 					switch (c_type)
 					{
+					case TraceType::Property:
 					case TraceType::Class:
 					{
 						IBismuthClassInstance* as_class = static_cast<IBismuthClassInstance*>(current);
 
-						// TODO: Set current as pointer to property
+						current = as_class->GetPropertyPtr(identifierName, isThis);
+						if (current)
+						{
+							c_type = TraceType::Property;
+						}
+						else return {};
 
 						break;
 					}
@@ -931,6 +938,7 @@ namespace bismuth
 					{
 						current = m_ScopeStack[m_ScopeStackTop - 1]->GetThis();
 						c_type = TraceType::Class;
+						isThis = true;
 					}
 					else return {};
 				}
@@ -1045,7 +1053,7 @@ namespace bismuth
 		: IBismuthClassInstance(BismuthClassInstanceRelativity::Templated)
 		, m_ClassTemplate(_template)
 	{
-		m_Properties = (const void**)malloc(_template->m_TotalProperties * sizeof(const void*));
+		m_Properties = (void**)malloc(_template->m_TotalProperties * sizeof(const void*));
 	}
 
 	template<typename _T>
@@ -1058,6 +1066,16 @@ namespace bismuth
 			return *static_cast<const _T*>(val);
 		}
 		else return std::nullopt;
+	}
+
+	void* const BismuthClassInstance::GetPropertyPtr(const std::string& name, bool local) const
+	{
+		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name, local);
+		if (prop.has_value())
+		{
+			return m_Properties[prop.value().Offset];
+		}
+		else return nullptr;
 	}
 
 	#define CLASSINSTANCE_GETPROP_INITIALIZE std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name, true);\
@@ -1225,7 +1243,7 @@ namespace bismuth
 		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name, true);
 		if (prop.has_value())
 		{
-			m_Properties[prop.value().Offset] = &newValue;
+			m_Properties[prop.value().Offset] = new _T(newValue);
 		}
 	}
 
@@ -1238,6 +1256,15 @@ namespace bismuth
 		{
 			m_Properties[handle.first] = handle.second;
 		}
+	}
+
+	void* const BismuthClassInstance_UserHandle::GetPropertyPtr(const std::string& name, bool) const
+	{
+		if (m_Properties.count(name) > 0)
+		{
+			return m_Properties.at(name).Target;
+		}
+		else return nullptr;
 	}
 
 	template<typename _T>

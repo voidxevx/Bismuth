@@ -42,8 +42,21 @@ int main()
 	bismuth.BuildString(src);
 	bismuth.JoinFinishedBuild();
 
-	bismuth.DoString("Test t = Test(200);");
+	bismuth.DoString("Test t;");
 	bismuth.JoinThread();
+
+	bismuth::bis_class_template templ = bismuth::BismuthClassTemplate::CreateClassTemplate("Test", { {bismuth::ValueType::Int, bismuth::BismuthClassDomain::Public, "val" }}, {});
+
+	bismuth.PushScope();
+
+	bismuth.PushVariable("testClass", new bismuth::bis_class(bismuth::ValueType::Custom, new bismuth::BismuthClassInstance(templ) ));
+	bismuth::IBismuthClassInstance::SetInstanceProperty(bismuth.var<bismuth::IBismuthClassInstance*>("testClass"), "val", 30);
+	unsigned int _i = 0;
+	bismuth::state::TraceObject to =  bismuth.TraceForObjects(bismuth.tokenize(":testClass:val"), _i);
+	int* val = static_cast<int*>(to.ptr);
+	std::cout << *val << std::endl;
+
+	bismuth.PopScope();
 
 	return 0;
 }
