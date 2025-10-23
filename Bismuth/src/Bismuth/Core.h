@@ -1,9 +1,13 @@
 #pragma once
 
-#ifdef BISMUTH_BUILD_DLL
-#define BISMUTH_API _declspec(dllexport)
+#ifdef _WIN32
+	#ifdef BISMUTH_BUILD_DLL
+		#define BISMUTH_API _declspec(dllexport)
+	#else
+		#define BISMUTH_API _declspec(dllimport)
+	#endif
 #else
-#define BISMUTH_API _declspec(dllimport)
+	#define BISMUTH_API
 #endif
 
 template<typename _T>

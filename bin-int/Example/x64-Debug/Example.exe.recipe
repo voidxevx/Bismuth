@@ -2,10 +2,10 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>C:\Users\rebradbury4604\projects\Bismuth\bin\Bismuth\x64-Debug\Bismuth.dll</FullPath>
+      <FullPath>H:\My Drive\Tonic engine\Bismuth\bin\Bismuth\x64-Debug\Bismuth.dll</FullPath>
     </ProjectOutput>
     <ProjectOutput>
-      <FullPath>C:\Users\rebradbury4604\projects\Bismuth\bin\Example\x64-Debug\Example.exe</FullPath>
+      <FullPath>H:\My Drive\Tonic engine\Bismuth\bin\Example\x64-Debug\Example.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />

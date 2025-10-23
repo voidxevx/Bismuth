@@ -20,37 +20,30 @@ int main()
 	}));
 
 	const std::string src = R"(
-		class Test
+		class Test extends Foo
 		{
 			public int pubVal;
 			protected int proVal;
 			private int priVal;
-		}	
+
+			public Test __init__(int val)
+			{
+				pubVal = val;
+				proVal = 45;
+				priVal = 200;
+			}
+
+			public int ADD()
+			{
+				return +(+(pubVal, proVal), priVal);
+			}
+		}
 	)";
-	bismuth.Build(bismuth.tokenize(src));
+	bismuth.BuildString(src);
+	bismuth.JoinFinishedBuild();
 
-
-	//bismuth.DoString("foo(100, 300);");
-	//bismuth.JoinThread();
-
-	/*struct testHandle
-	{
-		int myVal;
-
-		testHandle(int v)
-			: myVal(v)
-		{}
-	};
-
-	testHandle* testH = new testHandle(12);
-
-	bismuth::bis_class_template testClass_templ = bismuth::BismuthClassTemplate::CreateClassTemplate({ {"myVal", bismuth::ValueType::Int} });
-
-	bismuth::bis_class testClass_inst = bismuth::bis_class(bismuth::ValueType::Custom, new bismuth::BismuthClassInstance{ testClass_templ });
-	bismuth::bis_class testClass_handle = bismuth::bis_class(bismuth::ValueType::Custom, new bismuth::BismuthClassInstace_UserHandle{ { {"myVal", bismuth::BismuthUserHandle{bismuth::ValueType::Int, &testH->myVal }} } });
-
-	bismuth::IBismuthClassInstance::SetInstanceProperty<int>(testClass_inst, "myVal", 30);
-	bismuth::IBismuthClassInstance::SetInstanceProperty<int>(testClass_handle, "myVal", 30);*/
+	bismuth.DoString("Test t = Test(200);");
+	bismuth.JoinThread();
 
 	return 0;
 }

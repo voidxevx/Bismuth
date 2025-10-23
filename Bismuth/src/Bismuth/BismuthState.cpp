@@ -115,6 +115,8 @@ namespace bismuth
 					tokens.push_back(token(tokenType::ScopeStart));
 				else if (c_InternTokens[i] == "}")
 					tokens.push_back(token(tokenType::ScopeEnd));
+				else if (c_InternTokens[i] == ":")
+					tokens.push_back(token(tokenType::Property));
 				else if (c_InternTokens[i] == "nil")
 					tokens.push_back(token(tokenType::StaticNil));
 				else if (c_InternTokens[i] == "return")
@@ -174,7 +176,7 @@ namespace bismuth
 						tokens.push_back(buffer.str());
 					buffer.str("");
 				}
-				else if (!std::isalnum(str[i]) && str[i] != '.')
+				else if (!std::isalnum(str[i]) && str[i] != '.' && str[i] != '_')
 				{
 					if (buffer.str() != "")
 						tokens.push_back(buffer.str());
@@ -431,6 +433,20 @@ namespace bismuth
 		--m_ReturnsStackTop;
 		return val;
 	}
+
+	template<>
+	const IBismuthClassInstance* state::popFromReturn()
+	{
+		POPRETURN_INITIALIZE
+
+		const IBismuthClassInstance* copy_val;
+		if (top.Type == ValueType::Custom)
+			copy_val = static_cast<const IBismuthClassInstance*>(val);
+		else copy_val = nullptr;
+
+		POPRETURN_CLEANUP
+		return copy_val;
+	}
 	
 
 
@@ -562,10 +578,10 @@ namespace bismuth
 						c_token = tokens[i];
 
 						std::vector<PropertyTemplate> properties;
+						std::map<std::string, IBismuthFunction*> functions;
 
 						while (tokens[i].Type != tokenType::ScopeEnd)
 						{
-							++i;
 							c_token = tokens[i];
 
 							if (c_token.Type == tokenType::PublicDomain || c_token.Type == tokenType::ProtectedDomain || c_token.Type == tokenType::PrivateDomain)
@@ -598,7 +614,27 @@ namespace bismuth
 										*/
 										if (c_token.Type == tokenType::ExpressionStart)
 										{
-											// TODO: Class methods
+											std::vector<BismuthFunctionInput> inputs(GetInputs(tokens, i));
+											std::reverse(inputs.begin(), inputs.end());
+
+											++i;
+											std::vector<token> func_tokens;
+											unsigned int stack = 1;
+											while (stack != 0)
+											{
+												c_token = tokens[i];
+
+												if (c_token.Type == tokenType::ScopeStart)
+													++stack;
+												else if (c_token.Type == tokenType::ScopeEnd)
+													--stack;
+												else func_tokens.push_back(c_token);
+
+												++i;
+											}
+
+											BismuthFunction_Local* func = new BismuthFunction_Local(valType, inputs, func_tokens, (valType == ValueType::Custom ? (std::optional<std::string>)type_str : std::nullopt));
+											functions[propertyName] = func;
 										}
 										else
 										{
@@ -607,16 +643,24 @@ namespace bismuth
 									}
 								}
 							}
+							else
+								++i;
 						}
 
-						m_ClassTypes[className] = std::make_shared<BismuthClassTemplate>(properties, parent);
-						++i;
+						m_ClassTypes[className] = std::make_shared<BismuthClassTemplate>(className, properties, functions, parent);
 					}
 				}
 			}
 
 			++i;
 		}
+	}
+
+	void state::BuildString(const std::string& source)
+	{
+		m_BuildThread = std::thread([this](const std::string& src) {
+			Build(tokenize(src));
+		}, source);
 	}
 
 
@@ -651,6 +695,13 @@ namespace bismuth
 					{
 						EvaluateExpression(tokens, i);
 						RunFunction(m_GlobalFunctions[identifierName]); 
+					}
+					else if (m_ClassTypes.count(identifierName) > 0)
+					{
+						EvaluateExpression(tokens, i);
+						BismuthClassInstance* inst = new BismuthClassInstance(m_ClassTypes[identifierName]);
+						// TODO: run constructor function
+						pushToReturn(inst, ValueType::Custom);
 					}
 				}
 				else // push variable value to stack
@@ -701,6 +752,11 @@ namespace bismuth
 						var = new bis_uint(ValueType::Uint, 0U);
 					else if (varType == "any")
 						var = new bis_voidptr(ValueType::Analogous, nullptr);
+					/* Custom class type */
+					else if (m_ClassTypes.count(varType) > 0)
+					{
+						var = new bis_class(ValueType::Custom, new BismuthClassInstance(m_ClassTypes[varType]));
+					}
 
 					/* Variable Instantiation -
 					*	followed by assignment: instantiate with value
@@ -734,6 +790,11 @@ namespace bismuth
 						{
 							bis_voidptr* var_voidptr = dynamic_cast<bis_voidptr*>(var);
 							var_voidptr->Set(popFromReturn<const void*>());
+						}
+						else if (m_ClassTypes.count(varType) > 0)
+						{
+							bis_class* var_class = dynamic_cast<bis_class*>(var);
+							var_class->Set(popFromReturn<IBismuthClassInstance*>());
 						}
 
 
@@ -813,6 +874,78 @@ namespace bismuth
 	}
 
 
+	state::TraceObject state::TraceForObjects(const std::vector<token>& tokens, unsigned int& i, const state::TraceObject& last)
+	{
+		void* current = last.ptr;
+		TraceType c_type = last.Type;
+
+		while (tokens[i].Type == tokenType::Property)
+		{
+			++i; // to identifier
+			token c_token = tokens[i];
+			if (c_token.Type == tokenType::Identifier)
+			{
+				const std::string identifierName = c_token.Value.value();
+
+				/* Search object */
+				if (current)
+				{
+
+					switch (c_type)
+					{
+					case TraceType::Class:
+					{
+						IBismuthClassInstance* as_class = static_cast<IBismuthClassInstance*>(current);
+
+						// TODO: Set current as pointer to property
+
+						break;
+					}
+					case TraceType::Function:
+						// TODO: call and trace function
+						break;
+					case TraceType::Variable: 
+						return { c_type, current }; /* Variable types can't have properties */
+					}
+
+				}
+				/* Search state */
+				else
+				{
+					std::optional<IBismuthVariable*> var = GetVariable(identifierName);
+					/* objects is variable */
+					if (var.has_value())
+					{
+						current = var.value();
+						if (var.value()->GetStaticType() == ValueType::Custom)
+							c_type = TraceType::Class;
+						else
+							c_type = TraceType::Variable;
+					}
+					else if (m_GlobalFunctions.count(identifierName))
+					{
+						current = m_GlobalFunctions[identifierName];
+						c_type = TraceType::Function;
+					}
+					else if (identifierName == "this" && m_ScopeStack[m_ScopeStackTop - 1]->GetThis())
+					{
+						current = m_ScopeStack[m_ScopeStackTop - 1]->GetThis();
+						c_type = TraceType::Class;
+					}
+					else return {};
+				}
+			}
+			else return {};
+
+			++i; // to next ":"
+		}
+
+		return { c_type, current };
+	}
+
+
+
+
 	void state::DoString(const std::string& source)
 	{
 		m_OperationThread = std::thread([this](const std::string& src){
@@ -878,9 +1011,11 @@ namespace bismuth
 
 
 
-	BismuthClassTemplate::BismuthClassTemplate(const std::vector<PropertyTemplate>& properties, const std::shared_ptr<BismuthClassTemplate> parent)
+	BismuthClassTemplate::BismuthClassTemplate(const std::string& name, const std::vector<PropertyTemplate>& properties, std::map<std::string, IBismuthFunction*> functions, const std::shared_ptr<BismuthClassTemplate> parent)
 		: m_ParentClass(parent)
 		, m_TotalProperties(properties.size())
+		, m_ClassName(name)
+		, m_Functions(functions)
 	{
 		unsigned int offset = 0;
 		for (const auto& prop : properties)
@@ -899,9 +1034,9 @@ namespace bismuth
 			return std::nullopt;
 	}
 
-	std::shared_ptr<BismuthClassTemplate> BismuthClassTemplate::CreateClassTemplate(const std::vector<PropertyTemplate>& properties, const std::shared_ptr<BismuthClassTemplate> parent)
+	std::shared_ptr<BismuthClassTemplate> BismuthClassTemplate::CreateClassTemplate(const std::string& name, const std::vector<PropertyTemplate>& properties, std::map<std::string, IBismuthFunction*> functions, const std::shared_ptr<BismuthClassTemplate> parent)
 	{
-		return std::make_shared<BismuthClassTemplate>(properties, parent);
+		return std::make_shared<BismuthClassTemplate>(name, properties, functions, parent);
 	}
 
 
@@ -916,7 +1051,7 @@ namespace bismuth
 	template<typename _T>
 	const std::optional<_T> BismuthClassInstance::getProperty(const std::string& name) const
 	{
-		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name);
+		std::optional<BismuthClassProperty> prop = m_ClassTemplate->getStaticProperty(name, true);
 		if (prop.has_value())
 		{
 			const void* val = m_Properties[prop.value().Offset];
@@ -1084,7 +1219,6 @@ namespace bismuth
 		CLASSINSTANCE_GETPROP_CLEANUP
 	}
 
-
 	template<typename _T>
 	void BismuthClassInstance::setProperty(const std::string& name, _T newValue)
 	{
@@ -1097,7 +1231,7 @@ namespace bismuth
 
 
 
-	BismuthClassInstace_UserHandle::BismuthClassInstace_UserHandle(const std::vector<std::pair<std::string, BismuthUserHandle>>& handles)
+	BismuthClassInstance_UserHandle::BismuthClassInstance_UserHandle(const std::vector<std::pair<std::string, BismuthUserHandle>>& handles)
 		: IBismuthClassInstance(BismuthClassInstanceRelativity::UserHandle)
 	{
 		for (const auto& handle : handles)
@@ -1107,13 +1241,13 @@ namespace bismuth
 	}
 
 	template<typename _T>
-	const std::optional<_T> BismuthClassInstace_UserHandle::getProperty(const std::string& name) const
+	const std::optional<_T> BismuthClassInstance_UserHandle::getProperty(const std::string& name) const
 	{
 		return std::nullopt;
 	}
 
 	template<> BISMUTH_API
-	const std::optional<int> BismuthClassInstace_UserHandle::getProperty(const std::string& name) const
+	const std::optional<int> BismuthClassInstance_UserHandle::getProperty(const std::string& name) const
 	{
 		if (m_Properties.count(name) > 0)
 		{
@@ -1152,7 +1286,7 @@ namespace bismuth
 	}
 
 	template<> BISMUTH_API
-	const std::optional<std::string> BismuthClassInstace_UserHandle::getProperty(const std::string& name) const
+	const std::optional<std::string> BismuthClassInstance_UserHandle::getProperty(const std::string& name) const
 	{
 		if (m_Properties.count(name) > 0)
 		{
@@ -1185,7 +1319,7 @@ namespace bismuth
 	}
 
 	template<> BISMUTH_API
-	const std::optional<unsigned int> BismuthClassInstace_UserHandle::getProperty(const std::string& name) const
+	const std::optional<unsigned int> BismuthClassInstance_UserHandle::getProperty(const std::string& name) const
 	{
 		if (m_Properties.count(name) > 0)
 		{
@@ -1224,7 +1358,7 @@ namespace bismuth
 	}
 
 	template<> BISMUTH_API
-	const std::optional<float> BismuthClassInstace_UserHandle::getProperty(const std::string& name) const
+	const std::optional<float> BismuthClassInstance_UserHandle::getProperty(const std::string& name) const
 	{
 		if (m_Properties.count(name) > 0)
 		{
@@ -1263,10 +1397,10 @@ namespace bismuth
 	}
 
 	template<typename _T> 
-	void BismuthClassInstace_UserHandle::setProperty(const std::string& name, _T newValue)
+	void BismuthClassInstance_UserHandle::setProperty(const std::string& name, _T newValue)
 	{
 		if (m_Properties.count(name) > 0)
-			m_Properties[name].Target = &newValue;
+			*static_cast<_T*>(m_Properties[name].Target) = newValue;
 	}
 
 
@@ -1282,7 +1416,7 @@ namespace bismuth
 		}
 		case BismuthClassInstanceRelativity::UserHandle:
 		{
-			const BismuthClassInstace_UserHandle* const inst = dynamic_cast<const BismuthClassInstace_UserHandle* const>(instance);
+			const BismuthClassInstance_UserHandle* const inst = dynamic_cast<const BismuthClassInstance_UserHandle* const>(instance);
 			return inst->getProperty<_T>(name);
 		}
 		}
@@ -1301,7 +1435,7 @@ namespace bismuth
 		}
 		case BismuthClassInstanceRelativity::UserHandle:
 		{
-			BismuthClassInstace_UserHandle* const inst = dynamic_cast<BismuthClassInstace_UserHandle* const>(instance);
+			BismuthClassInstance_UserHandle* const inst = dynamic_cast<BismuthClassInstance_UserHandle* const>(instance);
 			inst->setProperty<_T>(name, newValue);
 			break;
 		}

@@ -1,5 +1,12 @@
 #pragma once
 
+/* Rex Bradbury, 10/22/25 - Bismuth
+   Apothicary runtime scripting language
+
+	TODO: Trace Identifiers - Get pointer to class property
+
+*/
+
 #include "Core.h"
 
 #include <optional>
@@ -17,7 +24,8 @@ namespace bismuth
 	template<typename _T>
 	static void Delete_ptr(_T* ptr)
 	{
-		delete ptr;
+		if (ptr)
+			delete ptr;
 		ptr = nullptr;
 	}
 
@@ -31,11 +39,14 @@ namespace bismuth
 		ExpressionEnd, // )
 		ScopeStart, // {
 		ScopeEnd, // }
+		Property, // :
 
 		StaticInt,
 		StaticFloat,
 		StaticString,
 		StaticNil,
+		StaticBool_True, // true
+		StaticBool_False, // false
 
 		Return, // return
 		ClassDecl, // class
@@ -72,6 +83,7 @@ namespace bismuth
 		String,
 		Float,
 		Uint,
+		Bool,
 		Analogous,
 		Custom,
 		Nil,
@@ -82,7 +94,7 @@ namespace bismuth
 	public:
 		IBismuthVariable(ValueType type)
 			: m_Type(type)
-		{ }
+		{}
 		virtual ~IBismuthVariable() = default;
 		
 		inline const ValueType GetStaticType() const { return m_Type; }
@@ -129,6 +141,8 @@ namespace bismuth
 	typedef        BISMUTH_API BismuthVariable<int>           bis_int;
 	template class BISMUTH_API BismuthVariable<unsigned int>; 
 	typedef        BISMUTH_API BismuthVariable<unsigned int>  bis_uint;
+	template class BISMUTH_API BismuthVariable<bool>; 
+	typedef        BISMUTH_API BismuthVariable<bool>          bis_bool;
 	template class BISMUTH_API BismuthVariable<float>;		  
 	typedef        BISMUTH_API BismuthVariable<float>         bis_float;
 	template class BISMUTH_API BismuthVariable<std::string>;  
@@ -262,16 +276,20 @@ namespace bismuth
 	{
 		friend class BismuthClassInstance;
 	public:
-		BismuthClassTemplate(const std::vector<PropertyTemplate>& properties, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
+		BismuthClassTemplate(const std::string& name, const std::vector<PropertyTemplate>& properties, std::map<std::string, IBismuthFunction*> functions, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
 
 		const std::optional<BismuthClassProperty> getStaticProperty(const std::string& name, bool local) const;
 
-		static std::shared_ptr<BismuthClassTemplate> CreateClassTemplate(const std::vector<PropertyTemplate>& properties, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
+		static std::shared_ptr<BismuthClassTemplate> CreateClassTemplate(const std::string& name, const std::vector<PropertyTemplate>& properties, std::map<std::string, IBismuthFunction*> functions, const std::shared_ptr<BismuthClassTemplate> parent = nullptr);
+
+		inline const std::string GetName() const { return m_ClassName; }
 
 	private:
 		const unsigned int m_TotalProperties;
 		std::map<std::string, BismuthClassProperty> m_Properties;
+		std::map<std::string, IBismuthFunction*> m_Functions;
 		std::shared_ptr<BismuthClassTemplate> m_ParentClass;
+		const std::string m_ClassName;
 	};
 
 	typedef std::shared_ptr<BismuthClassTemplate> bis_class_template;
@@ -295,6 +313,8 @@ namespace bismuth
 		template<typename _T>
 		static void SetInstanceProperty(IBismuthClassInstance* const instance, const std::string& name, _T newValue);
 
+		virtual void* const GetPropertyPtr(const std::string&) const { return nullptr; }
+
 	protected:
 		IBismuthClassInstance(BismuthClassInstanceRelativity relativity)
 			: m_Relativity(relativity)
@@ -307,12 +327,14 @@ namespace bismuth
 	template BISMUTH_API const std::optional<std::string> IBismuthClassInstance::GetInstanceProperty(const IBismuthClassInstance* const, const std::string&);
 	template BISMUTH_API const std::optional<float> IBismuthClassInstance::GetInstanceProperty(const IBismuthClassInstance* const, const std::string&);
 	template BISMUTH_API const std::optional<unsigned int> IBismuthClassInstance::GetInstanceProperty(const IBismuthClassInstance* const, const std::string&);
+	template BISMUTH_API const std::optional<bool> IBismuthClassInstance::GetInstanceProperty(const IBismuthClassInstance* const, const std::string&);
 	template BISMUTH_API const std::optional<const void*> IBismuthClassInstance::GetInstanceProperty(const IBismuthClassInstance* const, const std::string&);
 
 	template BISMUTH_API void IBismuthClassInstance::SetInstanceProperty(IBismuthClassInstance* const, const std::string&, int);
 	template BISMUTH_API void IBismuthClassInstance::SetInstanceProperty(IBismuthClassInstance* const, const std::string&, std::string);
 	template BISMUTH_API void IBismuthClassInstance::SetInstanceProperty(IBismuthClassInstance* const, const std::string&, float);
 	template BISMUTH_API void IBismuthClassInstance::SetInstanceProperty(IBismuthClassInstance* const, const std::string&, unsigned int);
+	template BISMUTH_API void IBismuthClassInstance::SetInstanceProperty(IBismuthClassInstance* const, const std::string&, bool);
 	template BISMUTH_API void IBismuthClassInstance::SetInstanceProperty(IBismuthClassInstance* const, const std::string&, const void*);
 
 	class BISMUTH_API BismuthClassInstance : public IBismuthClassInstance
@@ -326,6 +348,8 @@ namespace bismuth
 
 		template<typename _T>
 		void setProperty(const std::string& name, _T newValue);
+
+		virtual void* const GetPropertyPtr(const std::string&) const override;
 		
 	private:
 		std::shared_ptr<BismuthClassTemplate> m_ClassTemplate;
@@ -349,17 +373,19 @@ namespace bismuth
 		{}
 	};
 
-	class BISMUTH_API BismuthClassInstace_UserHandle : public IBismuthClassInstance
+	class BISMUTH_API BismuthClassInstance_UserHandle : public IBismuthClassInstance
 	{
 	public:
-		BismuthClassInstace_UserHandle(const std::vector<std::pair<std::string, BismuthUserHandle>>& handles);
-		virtual ~BismuthClassInstace_UserHandle() = default;
+		BismuthClassInstance_UserHandle(const std::vector<std::pair<std::string, BismuthUserHandle>>& handles);
+		virtual ~BismuthClassInstance_UserHandle() = default;
 
 		template<typename _T>
 		const std::optional<_T> getProperty(const std::string& name) const;
 
 		template<typename _T>
 		void setProperty(const std::string& name, _T newValue);
+
+		virtual void* const GetPropertyPtr(const std::string&) const override;
 
 	private:
 		std::map<std::string, BismuthUserHandle> m_Properties;
@@ -378,7 +404,8 @@ namespace bismuth
 	class VariableScope
 	{
 	public:
-		VariableScope()
+		VariableScope(IBismuthClassInstance* const scopeThis = nullptr)
+			: m_This(scopeThis)
 		{}
 
 
@@ -391,10 +418,12 @@ namespace bismuth
 		inline const unsigned int GetVariableLocation(const std::string& name) const { return m_VariableLocations.at(name); }
 		inline const bool HasVariable(const std::string& name) const { return m_VariableLocations.count(name) > 0; }
 		inline const unsigned int GetScopeSize() const { return m_ScopeSize; }
+		inline IBismuthClassInstance* const& GetThis() { return m_This; }
 
 	private:
 		unsigned int m_ScopeSize = 0; // amount to deallocate when destroyed
 		std::map<std::string, unsigned int> m_VariableLocations; // the locations of the variables
+		IBismuthClassInstance* const m_This; // the scope access point
 	};
 
 
@@ -435,19 +464,47 @@ namespace bismuth
 
 
 		void Build(const std::vector<token>& tokens);
+		void BuildString(const std::string& source);
 		void DoString(const std::string& source);
 		void Evaluate(const std::vector<token>& tokens);
 		void EvaluateExpression(const std::vector<token>& tokens, unsigned int& i);
 		void RunFunction(const IBismuthFunction* const function);
 
-		inline void JoinThread() { m_OperationThread.join(); }
-
+		inline void JoinThread() 
+		{ m_OperationThread.join(); }
+		inline void JoinFinishedBuild()
+		{ m_BuildThread.join(); }
 
 		template<typename _T>
 		_T popFromReturn();
 
 		static bool is_num_int(const std::string& str);
 		static bool is_num_float(const std::string& str);
+
+		enum TraceType
+		{
+			Function,
+			Variable,
+			Class,
+			NONE,
+		};
+		struct TraceObject
+		{
+			TraceType Type;
+			void* ptr;
+
+			TraceObject()
+				: Type(TraceType::NONE)
+				, ptr(nullptr)
+			{}
+
+			TraceObject(TraceType type, void* const _ptr)
+				: Type(type)
+				, ptr(_ptr)
+			{}
+		};
+
+		TraceObject TraceForObjects(const std::vector<token>& tokens, unsigned int& i, const state::TraceObject& last);
 
 	private:
 		void BreakToken(const std::string& str, std::vector<std::string>& tokens) const;
@@ -469,21 +526,23 @@ namespace bismuth
 			bool deallocate;
 		};
 		ReturnValue* m_ReturnStack;
-		//bool* m_ReturnDeallocations;
 		unsigned int m_ReturnsStackTop = 0;
 
 		std::thread m_OperationThread;
+		std::thread m_BuildThread;
 	};
 
 	template BISMUTH_API void state::PushVariable<int>(const std::string&, ValueType, int);
 	template BISMUTH_API void state::PushVariable<unsigned int>(const std::string&, ValueType, unsigned int);
 	template BISMUTH_API void state::PushVariable<float>(const std::string&, ValueType, float);
+	template BISMUTH_API void state::PushVariable<bool>(const std::string&, ValueType, bool);
 	template BISMUTH_API void state::PushVariable<std::string>(const std::string&, ValueType, std::string);
 	template BISMUTH_API void state::PushVariable<const void*>(const std::string&, ValueType, const void*);
 
 	template BISMUTH_API std::optional<bis_int*> state::GetVariable<int>(const std::string&);
 	template BISMUTH_API std::optional<bis_uint*> state::GetVariable<unsigned int>(const std::string&);
 	template BISMUTH_API std::optional<bis_float*> state::GetVariable<float>(const std::string&);
+	template BISMUTH_API std::optional<bis_bool*> state::GetVariable<bool>(const std::string&);
 	template BISMUTH_API std::optional<bis_string*> state::GetVariable<std::string>(const std::string&);
 	template BISMUTH_API std::optional<bis_voidptr*> state::GetVariable<const void*>(const std::string&);
 

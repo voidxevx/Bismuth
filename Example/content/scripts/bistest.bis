@@ -1,4 +1,38 @@
-void foo(int A, int B)
+
+class Person
 {
-    println(+(A, B));
+    private str Name;
+    private int Age;
+
+    Person __init__(str name, int age)
+    {
+        this:Name = name;
+        this:Age = age;
+    }
+
+    str getName()
+    {
+        return this:Name;
+    }
+
+    int getAge()
+    {
+        return this:Age;
+    }
+
+    void setName(str newName)
+    {
+        this:Name = newName;
+    }
+
+    void setAge(int newAge)
+    {
+        this:Age = newAge;
+    }
+
+    str __str__()
+    {
+        return concat(this:Name, " : ", str(this:Age));
+    }
+
 }
