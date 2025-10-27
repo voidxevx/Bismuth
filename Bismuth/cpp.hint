@@ -1,0 +1,7 @@
+// Hint files help the Visual Studio IDE interpret Visual C++ identifiers
+// such as names of functions and macros.
+// For more information see https://go.microsoft.com/fwlink/?linkid=865984
+#define BISMUTH_API __declspec(dllexport)
+#define BISMUTH_API __declspec(dllimport)
+#define BISMUTH_API
+#define GETHINTTYPE(t, tt, tm) template<> BISMUTH_API ValueType::ValueType GetHintType<t>() { return ValueType::__ValueType(ValueType::typeHint::tt, ValueType::typeModifier::tm); }

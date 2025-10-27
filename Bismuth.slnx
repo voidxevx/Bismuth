@@ -1,0 +1,8 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Bismuth/Bismuth.vcxproj" Id="a151d7c2-697c-4145-9145-cabb8d112b91" />
+  <Project Path="ScratchPad/ScratchPad.vcxproj" Id="f149e445-49b6-402d-9307-3f1f67dd96f0" />
+</Solution>
