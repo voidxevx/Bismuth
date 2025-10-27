@@ -21,7 +21,7 @@ namespace bis
 
 		void InsertVariable(size_t, const unsigned int);
 
-		std::optional<const unsigned int> GetVariableLocation(size_t) const;
+		std::optional<const unsigned int> GetVariableLocation(size_t, size_t = 0) const;
 
 	private:
 		Scope* m_ParentScope;

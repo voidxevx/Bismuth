@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -138,12 +138,14 @@
     <ClInclude Include="src\Bismuth\ClassTemplate.h" />
     <ClInclude Include="src\Bismuth\Core.h" />
     <ClInclude Include="src\Bismuth\scope.h" />
+    <ClInclude Include="src\Bismuth\Stack.h" />
     <ClInclude Include="src\Bismuth\state.h" />
     <ClInclude Include="src\Bismuth\variable.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Bismuth\ClassTemplate.cpp" />
     <ClCompile Include="src\Bismuth\scope.cpp" />
+    <ClCompile Include="src\Bismuth\Stack.cpp" />
     <ClCompile Include="src\Bismuth\state.cpp" />
     <ClCompile Include="src\Bismuth\variable.cpp" />
   </ItemGroup>

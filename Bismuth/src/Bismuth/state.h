@@ -5,6 +5,7 @@
 #include "variable.h"
 #include "ClassTemplate.h"
 #include "scope.h"
+#include "Stack.h"
 
 namespace bis
 {
@@ -24,8 +25,9 @@ namespace bis
 		void PopScope();
 
 	private:
-		__IVariable** m_VariableStack;
-		size_t m_VariableStackTop = 0;
+		//__IVariable** m_VariableStack;
+		util::stack<__IVariable*> m_VarStack;
+		//size_t m_VariableStackTop = 0;
 		Scope* m_CurrentScope;
 	};
 
