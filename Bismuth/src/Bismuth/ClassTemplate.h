@@ -73,13 +73,14 @@ namespace bis
 
 		std::optional<PropertyLocation> GetStaticProperty(const size_t, PropertyAccess::Point) const;
 		const unsigned int GetPropertyCount() const;
+		const std::map<size_t, PropertyLocation>& GetProperties() const { return m_Properties; }
 
 	private:
 		std::map<size_t, PropertyLocation> m_Properties;
 		std::shared_ptr<ClassTemplate> m_Parent;
 	};
 
-	class __ClassVariable : public __IVariable
+	class BISMUTH_API __ClassVariable : public __IVariable
 	{
 	public:
 		__ClassVariable(std::shared_ptr<ClassTemplate> _template)
@@ -92,5 +93,7 @@ namespace bis
 	private:
 		const std::shared_ptr<ClassTemplate> m_Template;
 	};
+
+	typedef __ClassVariable bisClass;
 
 }

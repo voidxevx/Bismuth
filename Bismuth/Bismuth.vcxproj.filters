@@ -36,6 +36,9 @@
     <ClInclude Include="src\Bismuth\Stack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Bismuth\token.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Bismuth\variable.cpp">

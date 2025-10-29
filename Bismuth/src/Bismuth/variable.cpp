@@ -110,6 +110,35 @@ namespace bis
 
 
 
+	inline BISMUTH_API __IVariable*
+	NullType(ValueType::ValueType type, bool _mutable)
+	{
+		ValueType::typeHint hint = ValueType::__GetHint(type).hint;
+		switch (hint)
+		{
+		case ValueType::typeHint::Int:
+			return new __Variable<int>(0, _mutable);
+		case ValueType::typeHint::Uint:
+			return new __Variable<unsigned int>(0, _mutable);
+		case ValueType::typeHint::Long:
+			return new __Variable<int>(0L, _mutable);
+		case ValueType::typeHint::Ulong:
+			return new __Variable<unsigned long>(0UL, _mutable);
+		case ValueType::typeHint::Float:
+			return new __Variable<float>(0.0f, _mutable);
+		case ValueType::typeHint::Double:
+			return new __Variable<double>(0.0, _mutable);
+		case ValueType::typeHint::Byte:
+			return new __Variable<char>(' ', _mutable);
+		case ValueType::typeHint::Ubyte:
+			return new __Variable<unsigned char>(' ', _mutable);
+		case ValueType::typeHint::Bool:
+			return new __Variable<bool>(false, _mutable);
+		case ValueType::typeHint::String:
+			return new __Variable<std::string>("", _mutable);
+		}
+	}
+
 
 
 

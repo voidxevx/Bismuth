@@ -60,6 +60,7 @@ namespace bis
 
 
 
+
 	template<typename _T> BISMUTH_API ValueType::ValueType GetHintType();
 	extern template BISMUTH_API ValueType::ValueType GetHintType<int>();
 	extern template BISMUTH_API ValueType::ValueType GetHintType<unsigned int>();
@@ -101,9 +102,10 @@ namespace bis
 	class BISMUTH_API __Variable : public __IVariable
 	{
 	public:
-		__Variable(_T value)
+		__Variable(_T value, bool _mutable)
 			: __IVariable(GetHintType<_T>())
 			, m_Value(value)
+			, m_Mutable(_mutable)
 		{}
 
 		virtual ~__Variable() = default;
@@ -112,11 +114,12 @@ namespace bis
 		inline _T Get() const { return m_Value; }
 		inline _T& GetRef() { return m_Value; }
 		inline _T* GetPtr() { return &m_Value; }
-		inline void Set(_T newVal) { m_Value = newVal; }
+		inline void Set(_T newVal) { if(m_Mutable) m_Value = newVal; }
 		inline void operator=(_T newVal) { m_Value = newVal; }
 
 	private:
 		_T m_Value;
+		const bool m_Mutable;
 	};
 
 
@@ -177,4 +180,6 @@ namespace bis
 	typedef __Variable<unsigned char*> bisUbyte_ptr;
 	typedef __Variable<bool*> bisBool_ptr;
 	typedef __Variable<std::string*> bisString_ptr;
+
+	extern BISMUTH_API __IVariable* NullType(ValueType::ValueType, bool);
 }

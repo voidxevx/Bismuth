@@ -29,9 +29,10 @@ namespace bis::util
 		void __purge()
 		{
 			if (next_item)
+			{
 				next_item->__purge();
-
-			delete next_item;
+				delete next_item;
+			}
 		}
 	};
 
