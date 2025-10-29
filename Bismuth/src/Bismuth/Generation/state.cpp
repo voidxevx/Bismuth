@@ -13,7 +13,7 @@ namespace bis
 	{
 	}
 
-	void
+	/*void
 	state::PushVariable(size_t id, __IVariable* var, bool _mutable)
 	{
 		ValueType::typeHint type = ValueType::__GetHint(var->GetType()).hint;
@@ -34,18 +34,18 @@ namespace bis
 			m_CurrentScope->InsertVariable(id);
 			m_VarStack.push(var);
 		}
-	}
+	}*/
 
-	std::optional<__IVariable*> state::GetRawVariable(size_t id)
+	/*std::optional<__IVariable*> state::GetRawVariable(size_t id)
 	{
 		std::optional<const unsigned int> loc = m_CurrentScope->GetVariableLocation(id);
 		if (loc.has_value())
 			return m_VarStack[loc.value()];
 		else
 			return std::nullopt;
-	}
+	}*/
 
-	template<typename _T> std::optional<_T>
+	/*template<typename _T> std::optional<_T>
 	state::GetVariable(size_t id)
 	{
 		std::optional<__IVariable*> var_opt = GetRawVariable(id);
@@ -53,10 +53,10 @@ namespace bis
 			return __SmartCast<_T>(var_opt.value());
 		else
 			return std::nullopt;
-	}
+	}*/
 
 
-	void
+	/*void
 	state::PushScope(const unsigned int root)
 	{
 		Scope* newScope = new Scope(m_CurrentScope, root);
@@ -74,7 +74,7 @@ namespace bis
 		Scope* nextScope = m_CurrentScope->GetParentScope();
 		delete m_CurrentScope;
 		m_CurrentScope = nextScope;
-	}
+	}*/
 
 	void state::PushTokens(token* const newTokens)
 	{
@@ -89,81 +89,81 @@ namespace bis
 		m_TopToken = m_TopToken->Next;
 	}
 
-	const unsigned int state::TraceIdentifier()
-	{
+	//const unsigned int state::TraceIdentifier()
+	//{
 
-		__ClassVariable* currentClass = nullptr;
-		unsigned int currentLocation = 0;
-		PropertyAccess::Point accessPoint = PropertyAccess::Point::Indirect;
+	//	__ClassVariable* currentClass = nullptr;
+	//	unsigned int currentLocation = 0;
+	//	PropertyAccess::Point accessPoint = PropertyAccess::Point::Indirect;
 
-		if (m_TopToken)
-		{
+	//	if (m_TopToken)
+	//	{
 
-			if (m_TopToken->Type == tokenType::Identifier)
-			{
-				std::optional<const unsigned int> loc_opt = m_CurrentScope->GetVariableLocation(m_TopToken->ID.value());
-				if (loc_opt.has_value())
-				{
-					currentLocation = loc_opt.value();
-					__IVariable* c_var = m_VarStack[currentLocation];
-					ValueType::typeHint type = ValueType::__GetHint(c_var->GetType()).hint;
+	//		if (m_TopToken->Type == tokenType::Identifier)
+	//		{
+	//			std::optional<const unsigned int> loc_opt = m_CurrentScope->GetVariableLocation(m_TopToken->ID.value());
+	//			if (loc_opt.has_value())
+	//			{
+	//				currentLocation = loc_opt.value();
+	//				__IVariable* c_var = m_VarStack[currentLocation];
+	//				ValueType::typeHint type = ValueType::__GetHint(c_var->GetType()).hint;
 
-					if (type == ValueType::typeHint::Class)
-					{
-						currentClass = dynamic_cast<__ClassVariable*>(c_var);
-					}
-					else // primitive types can't have properties
-						return currentLocation;
-				}
-				else return 0;
+	//				if (type == ValueType::typeHint::Class)
+	//				{
+	//					currentClass = dynamic_cast<__ClassVariable*>(c_var);
+	//				}
+	//				else // primitive types can't have properties
+	//					return currentLocation;
+	//			}
+	//			else return 0;
 
-			}
-			else return 0;
+	//		}
+	//		else return 0;
 
-			
-			popToken(); // pop identifier
-			/*
-			* trace loop
-			*/
-			while (m_TopToken && m_TopToken->Type == tokenType::Property)
-			{
-				popToken(); // pop property token
+	//		
+	//		popToken(); // pop identifier
+	//		/*
+	//		* trace loop
+	//		*/
+	//		while (m_TopToken && m_TopToken->Type == tokenType::Property)
+	//		{
+	//			popToken(); // pop property token
 
-				if (m_TopToken->Type == tokenType::Identifier)
-				{
-					
-					const size_t id = m_TopToken->ID.value();
+	//			if (m_TopToken->Type == tokenType::Identifier)
+	//			{
+	//				
+	//				const size_t id = m_TopToken->ID.value();
 
-					std::optional<PropertyLocation> offset = currentClass->GetTemplate()->GetStaticProperty(id, accessPoint);
+	//				std::optional<PropertyLocation> offset = currentClass->GetTemplate()->GetStaticProperty(id, accessPoint);
 
-					if (offset.has_value())
-					{
-						currentLocation -= offset.value().Offset;
-						__IVariable* currentVar = m_VarStack[currentLocation];
+	//				if (offset.has_value())
+	//				{
+	//					currentLocation -= offset.value().Offset;
+	//					__IVariable* currentVar = m_VarStack[currentLocation];
 
-						ValueType::typeHint type = ValueType::__GetHint(currentVar->GetType()).hint;
-						if (type == ValueType::typeHint::Class)
-						{
-							currentClass = dynamic_cast<__ClassVariable*>(currentVar);
-						}
-						else return currentLocation;
+	//					ValueType::typeHint type = ValueType::__GetHint(currentVar->GetType()).hint;
+	//					if (type == ValueType::typeHint::Class)
+	//					{
+	//						currentClass = dynamic_cast<__ClassVariable*>(currentVar);
+	//					}
+	//					else return currentLocation;
 
-						if (accessPoint == PropertyAccess::Point::Direct)
-							accessPoint = PropertyAccess::Point::Indirect;
-					}
-					else return currentLocation;
-				}
-				else return currentLocation;
+	//					if (accessPoint == PropertyAccess::Point::Direct)
+	//						accessPoint = PropertyAccess::Point::Indirect;
+	//				}
+	//				else return currentLocation;
+	//			}
+	//			else return currentLocation;
 
-				popToken(); // pop identifier
-			}
+	//			popToken(); // pop identifier
+	//		}
 
-			return currentLocation;
+	//		return currentLocation;
 
-		}
-		else return 0;
+	//	}
+	//	else return 0;
 
-	}
+	//}
 
 
 	token* state::tokenize(const std::string& src)
