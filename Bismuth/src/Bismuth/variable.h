@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Core.h"
+#include "Core.h"
 
 #include <functional>
 #include <string>
@@ -114,7 +114,7 @@ namespace bis
 		inline _T Get() const { return m_Value; }
 		inline _T& GetRef() { return m_Value; }
 		inline _T* GetPtr() { return &m_Value; }
-		inline void Set(_T newVal) { if(m_Mutable) m_Value = newVal; }
+		inline void Set(_T newVal, bool force = false) { if(m_Mutable || force) m_Value = newVal; }
 		inline void operator=(_T newVal) { m_Value = newVal; }
 
 	private:
@@ -146,19 +146,6 @@ namespace bis
 	template class BISMUTH_API __Variable<bool>;
 	template class BISMUTH_API __Variable<std::string>;
 
-	template class BISMUTH_API __Variable<int*>;
-	template class BISMUTH_API __Variable<unsigned int*>;
-	template class BISMUTH_API __Variable<long*>;
-	template class BISMUTH_API __Variable<unsigned long*>;
-	template class BISMUTH_API __Variable<float*>;
-	template class BISMUTH_API __Variable<double*>;
-	template class BISMUTH_API __Variable<char*>;
-	template class BISMUTH_API __Variable<unsigned char*>;
-	template class BISMUTH_API __Variable<bool*>;
-	template class BISMUTH_API __Variable<std::string*>;
-
-
-
 
 	typedef __Variable<int> bisInt;
 	typedef __Variable<unsigned int> bisUint;
@@ -170,16 +157,6 @@ namespace bis
 	typedef __Variable<unsigned char> bisUbyte;
 	typedef __Variable<bool> bisBool;
 	typedef __Variable<std::string> bisString;
-	typedef __Variable<int*> bisInt_ptr;
-	typedef __Variable<unsigned int*> bisUint_ptr;
-	typedef __Variable<long*> bisLong_ptr;
-	typedef __Variable<unsigned long*> bisUlong_ptr;
-	typedef __Variable<float*> bisFloat_ptr;
-	typedef __Variable<double*> bisDouble_ptr;
-	typedef __Variable<char*> bisByte_ptr;
-	typedef __Variable<unsigned char*> bisUbyte_ptr;
-	typedef __Variable<bool*> bisBool_ptr;
-	typedef __Variable<std::string*> bisString_ptr;
 
 	extern BISMUTH_API __IVariable* NullType(ValueType::ValueType, bool);
 }

@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <PlatformToolset>v145</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -135,17 +135,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="src\bismuth.h" />
+    <ClInclude Include="src\Bismuth\ClassTemplate.h" />
     <ClInclude Include="src\Bismuth\Core.h" />
-    <ClInclude Include="src\Bismuth\Generation\state.h" />
-    <ClInclude Include="src\Bismuth\Generation\token.h" />
-    <ClInclude Include="src\Bismuth\VirtualMachine\Node.h" />
-    <ClInclude Include="src\Bismuth\VirtualMachine\variable.h" />
-    <ClInclude Include="src\Bismuth\VirtualMachine\VirtualInterface.h" />
+    <ClInclude Include="src\Bismuth\scope.h" />
+    <ClInclude Include="src\Bismuth\Stack.h" />
+    <ClInclude Include="src\Bismuth\state.h" />
+    <ClInclude Include="src\Bismuth\token.h" />
+    <ClInclude Include="src\Bismuth\variable.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Bismuth\Generation\state.cpp" />
-    <ClCompile Include="src\Bismuth\VirtualMachine\variable.cpp" />
-    <ClCompile Include="src\Bismuth\VirtualMachine\VirtualInterface.cpp" />
+    <ClCompile Include="src\Bismuth\ClassTemplate.cpp" />
+    <ClCompile Include="src\Bismuth\scope.cpp" />
+    <ClCompile Include="src\Bismuth\Stack.cpp" />
+    <ClCompile Include="src\Bismuth\state.cpp" />
+    <ClCompile Include="src\Bismuth\variable.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

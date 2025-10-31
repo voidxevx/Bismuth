@@ -18,33 +18,42 @@
     <ClInclude Include="src\bismuth.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Bismuth\VirtualMachine\variable.h">
+    <ClInclude Include="src\Bismuth\variable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Bismuth\Core.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Bismuth\Generation\state.h">
+    <ClInclude Include="src\Bismuth\state.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Bismuth\Generation\token.h">
+    <ClInclude Include="src\Bismuth\token.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Bismuth\VirtualMachine\Node.h">
+    <ClInclude Include="src\Bismuth\ClassTemplate.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Bismuth\VirtualMachine\VirtualInterface.h">
+    <ClInclude Include="src\Bismuth\scope.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Bismuth\Stack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\Bismuth\VirtualMachine\variable.cpp">
+    <ClCompile Include="src\Bismuth\variable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Bismuth\Generation\state.cpp">
+    <ClCompile Include="src\Bismuth\state.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\Bismuth\VirtualMachine\VirtualInterface.cpp">
+    <ClCompile Include="src\Bismuth\ClassTemplate.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Bismuth\scope.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Bismuth\Stack.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
